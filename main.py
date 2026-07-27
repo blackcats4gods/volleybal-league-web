@@ -51,3 +51,34 @@ def create_team(team: schemas.TeamCreate, db: Session = Depends(get_db)):
 def get_teams(db: Session = Depends(get_db)):
     teams = db.query(models.Team).all()
     return teams
+
+# 3. Эндпоинт для создания игрока
+@app.post("/api/v1/players", response_model=schemas.PlayerResponse)
+def create_player(player: schemas.PlayerCreate, db: Session = Depends(get_db)):
+    # Если указан team_id, проверяем существование такой команды
+    if player.team_id:
+        team = (
+            db.query(models.Team).filter(models.Team.id == player.team_id).first()
+        )
+        if not team:
+            raise HTTPException(
+                status_code=404, detail="Указанная команда не найдена"
+            )
+
+    new_player = models.Player(
+        first_name=player.first_name,
+        last_name=player.last_name,
+        position=player.position,
+        team_id=player.team_id,
+    )
+    db.add(new_player)
+    db.commit()
+    db.refresh(new_player)
+    return new_player
+
+
+# 4. Эндпоинт для получения всех игроков
+@app.get("/api/v1/players", response_model=List[schemas.PlayerResponse])
+def get_players(db: Session = Depends(get_db)):
+    players = db.query(models.Player).all()
+    return players

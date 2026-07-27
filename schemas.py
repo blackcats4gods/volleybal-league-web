@@ -12,3 +12,18 @@ class TeamResponse(TeamCreate):
 
     class Config:
         from_attributes = True
+
+# Схема для создания игрока
+class PlayerCreate(BaseModel):
+    first_name: str
+    last_name: str
+    position: Optional[str] = None
+    team_id: Optional[int] = None  # Привязка к id команды
+
+
+# Схема для ответа игрока из БД
+class PlayerResponse(PlayerCreate):
+    id: int
+
+    class Config:
+        from_attributes = True

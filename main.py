@@ -82,3 +82,60 @@ def create_player(player: schemas.PlayerCreate, db: Session = Depends(get_db)):
 def get_players(db: Session = Depends(get_db)):
     players = db.query(models.Player).all()
     return players
+
+# 5. Создание (планирование) матча
+@app.post("/api/v1/matches", response_model=schemas.MatchResponse)
+def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
+    if match.home_team_id == match.away_team_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Команда не может играть сама с собой",
+        )
+
+    new_match = models.Match(
+        home_team_id=match.home_team_id, away_team_id=match.away_team_id
+    )
+    db.add(new_match)
+    db.commit()
+    db.refresh(new_match)
+    return new_match
+
+
+# 6. Внесение результата матча
+@app.put(
+    "/api/v1/matches/{match_id}/result", response_model=schemas.MatchResponse
+)
+def update_match_result(
+    match_id: int,
+    result: schemas.MatchResultUpdate,
+    db: Session = Depends(get_db),
+):
+    match = (
+        db.query(models.Match).filter(models.Match.id == match_id).first()
+    )
+    if not match:
+        raise HTTPException(status_code=404, detail="Матч не найден")
+
+    # Валидация волейбольного счета (кто-то должен выиграть 3 сета)
+    if not (
+        (result.home_score == 3 and result.away_score in [0, 1, 2])
+        or (result.away_score == 3 and result.home_score in [0, 1, 2])
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Некорректный волейбольный счет. Победитель должен взять ровно 3 сета",
+        )
+
+    match.home_score = result.home_score
+    match.away_score = result.away_score
+    match.is_completed = True
+
+    db.commit()
+    db.refresh(match)
+    return match
+
+
+# 7. Получение списка всех матчей
+@app.get("/api/v1/matches", response_model=List[schemas.MatchResponse])
+def get_matches(db: Session = Depends(get_db)):
+    return db.query(models.Match).all()

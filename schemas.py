@@ -27,3 +27,25 @@ class PlayerResponse(PlayerCreate):
 
     class Config:
         from_attributes = True
+
+# Схема для создания матча (планирование игры)
+class MatchCreate(BaseModel):
+    home_team_id: int
+    away_team_id: int
+
+
+# Схема для внесения результата матча
+class MatchResultUpdate(BaseModel):
+    home_score: int
+    away_score: int
+
+
+# Схема ответа
+class MatchResponse(MatchCreate):
+    id: int
+    home_score: int
+    away_score: int
+    is_completed: bool
+
+    class Config:
+        from_attributes = True

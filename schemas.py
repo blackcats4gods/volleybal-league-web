@@ -49,3 +49,12 @@ class MatchResponse(MatchCreate):
 
     class Config:
         from_attributes = True
+
+ # Схема для элемента турнирной таблицы
+class StandingsRow(BaseModel):
+    team_id: int
+    team_name: str
+    games_played: int
+    wins: int
+    losses: int
+    points: int       

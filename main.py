@@ -139,3 +139,65 @@ def update_match_result(
 @app.get("/api/v1/matches", response_model=List[schemas.MatchResponse])
 def get_matches(db: Session = Depends(get_db)):
     return db.query(models.Match).all()
+
+
+# 8. Эндпоинт для получения турнирной таблицы
+@app.get("/api/v1/standings", response_model=List[schemas.StandingsRow])
+def get_standings(db: Session = Depends(get_db)):
+    teams = db.query(models.Team).all()
+    completed_matches = (
+        db.query(models.Match).filter(models.Match.is_completed == True).all()
+    )
+
+    # Инициализируем статистику для каждой команды
+    stats = {
+        team.id: {
+            "team_id": team.id,
+            "team_name": team.name,
+            "games_played": 0,
+            "wins": 0,
+            "losses": 0,
+            "points": 0,
+        }
+        for team in teams
+    }
+
+    # Обсчитываем результаты всех завершенных матчей
+    for match in completed_matches:
+        home_id = match.home_team_id
+        away_id = match.away_team_id
+
+        # Пропускаем, если команда была удалена
+        if home_id not in stats or away_id not in stats:
+            continue
+
+        stats[home_id]["games_played"] += 1
+        stats[away_id]["games_played"] += 1
+
+        # Победа хозяев
+        if match.home_score == 3:
+            stats[home_id]["wins"] += 1
+            stats[away_id]["losses"] += 1
+
+            if match.away_score in [0, 1]:
+                stats[home_id]["points"] += 3
+            elif match.away_score == 2:
+                stats[home_id]["points"] += 2
+                stats[away_id]["points"] += 1
+
+        # Победа гостей
+        elif match.away_score == 3:
+            stats[away_id]["wins"] += 1
+            stats[home_id]["losses"] += 1
+
+            if match.home_score in [0, 1]:
+                stats[away_id]["points"] += 3
+            elif match.home_score == 2:
+                stats[away_id]["points"] += 2
+                stats[home_id]["points"] += 1
+
+    # Превращаем словарь в список и сортируем по очкам (по убыванию)
+    standings = list(stats.values())
+    standings.sort(key=lambda x: x["points"], reverse=True)
+
+    return standings
